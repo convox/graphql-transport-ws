@@ -1,11 +1,17 @@
 package graphqlws
 
 import (
+	"context"
 	"net/http"
+	"strings"
 
 	"github.com/gorilla/websocket"
 
 	"github.com/graph-gophers/graphql-transport-ws/graphqlws/internal/connection"
+)
+
+const (
+	ContextAuthorization = connection.ContextAuthorization
 )
 
 const protocolGraphQLWS = "graphql-ws"
@@ -35,7 +41,13 @@ func NewHandlerFunc(svc connection.GraphQLService, httpHandler http.Handler) htt
 			}
 		}
 
+		ctx := r.Context()
+
+		if parts := strings.Fields(r.Header.Get("Authorization")); len(parts) == 2 && parts[0] == "Bearer" {
+			ctx = context.WithValue(ctx, ContextAuthorization, parts[1])
+		}
+
 		// Fallback to HTTP
-		httpHandler.ServeHTTP(w, r)
+		httpHandler.ServeHTTP(w, r.WithContext(ctx))
 	}
 }
